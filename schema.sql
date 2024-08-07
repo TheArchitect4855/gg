@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS users (
+	id TEXT NOT NULL PRIMARY KEY,
+	secret TEXT NOT NULL UNIQUE,
+	data JSONB NOT NULL,
+	created_at TEXT NOT NULL DEFAULT (datetime())
+);
