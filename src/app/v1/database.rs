@@ -4,6 +4,8 @@ use rusqlite::{params, OptionalExtension};
 
 use crate::app::data::{UserId, UserSecret};
 
+use super::user::UserData;
+
 pub struct SqliteDatabase {
 	connection: rusqlite::Connection,
 }
@@ -18,8 +20,9 @@ impl SqliteDatabase {
 		&self,
 		user_id: &UserId,
 		user_secret: &UserSecret,
-		user_data: &serde_json::Value,
+		user_data: &UserData,
 	) -> Result<(), rusqlite::Error> {
+		let user_data = serde_json::to_value(user_data).unwrap();
 		self.connection.execute(
 			r#"
 			INSERT INTO users (id, secret, data)
@@ -35,7 +38,7 @@ impl SqliteDatabase {
 		&self,
 		user_id: &UserId,
 		user_secret: &UserSecret,
-	) -> Option<serde_json::Value> {
+	) -> Option<UserData> {
 		let row: (UserSecret, serde_json::Value) = self
 			.connection
 			.query_row(
@@ -51,7 +54,7 @@ impl SqliteDatabase {
 			.unwrap()?;
 
 		if user_secret == &row.0 {
-			Some(row.1)
+			Some(serde_json::from_value(row.1).unwrap())
 		} else {
 			None
 		}
@@ -61,8 +64,9 @@ impl SqliteDatabase {
 		&self,
 		user_id: &UserId,
 		user_secret: &UserSecret,
-		user_data: &serde_json::Value,
+		user_data: &UserData,
 	) {
+		let user_data = serde_json::to_value(user_data).unwrap();
 		self.connection
 			.execute(
 				r#"
@@ -73,5 +77,29 @@ impl SqliteDatabase {
 				params![user_data, user_id, user_secret],
 			)
 			.unwrap();
+	}
+
+	pub fn get_user_name_options(&self) -> (Vec<String>, Vec<String>) {
+		let mut stmt = self
+			.connection
+			.prepare(
+				r#"
+			SELECT adjective, noun
+			FROM user_name_generator
+		"#,
+			)
+			.unwrap();
+
+		let mut rows = stmt.query(()).unwrap();
+		let mut adjectives = Vec::new();
+		let mut nouns = Vec::new();
+		while let Some(row) = rows.next().unwrap() {
+			let adj: String = row.get(0).unwrap();
+			let noun: String = row.get(1).unwrap();
+			adjectives.push(adj);
+			nouns.push(noun);
+		}
+
+		(adjectives, nouns)
 	}
 }
