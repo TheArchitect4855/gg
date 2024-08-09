@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use rusqlite::{types::FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 
-use crate::base32;
+use crate::rng;
 
 const SECRET_LEN: usize = 32;
 
@@ -12,7 +12,7 @@ pub struct UserSecret(String);
 
 impl UserSecret {
 	pub async fn new_random() -> Self {
-		let secret = base32::random_secure(SECRET_LEN).await;
+		let secret = rng::gen_base32_secure(SECRET_LEN).await;
 		Self(secret)
 	}
 }

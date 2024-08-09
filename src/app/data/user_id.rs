@@ -1,7 +1,7 @@
 use rusqlite::{types::FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 
-use crate::base32;
+use crate::rng;
 
 const ID_LEN: usize = 6;
 
@@ -10,7 +10,7 @@ pub struct UserId(String);
 
 impl UserId {
 	pub async fn new_random() -> Self {
-		let id = base32::random_secure(ID_LEN).await;
+		let id = rng::gen_base32_secure(ID_LEN).await;
 		Self(id)
 	}
 }

@@ -1,2 +1,2 @@
 pub mod app;
-pub mod base32;
+mod rng;
