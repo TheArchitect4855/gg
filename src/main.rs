@@ -1,5 +1,5 @@
 use actix_web::{middleware::Logger, web, App, HttpServer};
-use gg::app::services::SqliteDatabase;
+use gg::app::services::{MatchMaking, SqliteDatabase};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -11,7 +11,8 @@ async fn main() -> std::io::Result<()> {
 		("0.0.0.0", 80)
 	};
 
-	HttpServer::new(|| {
+	let matchmaking = web::Data::new(MatchMaking::default());
+	HttpServer::new(move || {
 		// Open a database connection per-thread. This should help prevent
 		// issues w.r.t. locking and transactions (maybe).
 		let database = SqliteDatabase::open("database.sqlite")
@@ -21,6 +22,7 @@ async fn main() -> std::io::Result<()> {
 		App::new()
 			.wrap(Logger::default())
 			.app_data(web::Data::new(database))
+			.app_data(matchmaking.clone())
 			.service(v1)
 	})
 	.bind(addr)?

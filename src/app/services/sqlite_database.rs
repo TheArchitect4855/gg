@@ -32,6 +32,20 @@ impl SqliteDatabase {
 		Ok(())
 	}
 
+	pub fn get_server_address(&self) -> String {
+		if cfg!(debug_assertions) {
+			return "localhost".into();
+		}
+
+		self.connection
+			.query_row(
+				"SELECT address FROM server_addresses LIMIT 1",
+				(),
+				|row| row.get(0),
+			)
+			.unwrap()
+	}
+
 	pub fn get_user_data(
 		&self,
 		user_id: &UserId,
@@ -56,6 +70,28 @@ impl SqliteDatabase {
 		} else {
 			None
 		}
+	}
+
+	pub fn is_user_authentic(
+		&self,
+		user_id: &UserId,
+		user_secret: &UserSecret,
+	) -> bool {
+		let secret: Option<UserSecret> = self
+			.connection
+			.query_row(
+				"SELECT secret FROM users WHERE id = ?",
+				params![user_id],
+				|row| row.get(0),
+			)
+			.optional()
+			.unwrap();
+
+		let Some(secret) = secret else {
+			return false;
+		};
+
+		user_secret == &secret
 	}
 
 	pub fn update_user_data(

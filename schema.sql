@@ -37,3 +37,8 @@ VALUES ('Alluring', 'Apple'),
 	('Xylographic', 'Xylophone'),
 	('Yelling', 'Yankee'),
 	('Zoinked', 'Zoomer')
+;
+
+CREATE TABLE IF NOT EXISTS server_addresses (
+	address TEXT NOT NULL PRIMARY KEY
+);
