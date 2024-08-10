@@ -2,8 +2,8 @@ use actix_web::{post, web};
 use serde::Deserialize;
 
 use crate::app::{
-	data::{UserId, UserSecret},
-	v1::{database::SqliteDatabase, user::UserData},
+	data::{UserData, UserId, UserSecret},
+	services::SqliteDatabase,
 };
 
 #[derive(Deserialize)]

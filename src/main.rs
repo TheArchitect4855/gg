@@ -1,4 +1,5 @@
 use actix_web::{middleware::Logger, web, App, HttpServer};
+use gg::app::services::SqliteDatabase;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -11,8 +12,16 @@ async fn main() -> std::io::Result<()> {
 	};
 
 	HttpServer::new(|| {
+		// Open a database connection per-thread. This should help prevent
+		// issues w.r.t. locking and transactions (maybe).
+		let database = SqliteDatabase::open("database.sqlite")
+			.expect("failed to open database");
+
 		let v1 = gg::app::v1::init(web::scope("/v1"));
-		App::new().wrap(Logger::default()).service(v1)
+		App::new()
+			.wrap(Logger::default())
+			.app_data(web::Data::new(database))
+			.service(v1)
 	})
 	.bind(addr)?
 	.run()

@@ -3,8 +3,8 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::app::{
-	data::{UserId, UserSecret},
-	v1::database::SqliteDatabase,
+	data::{UserData, UserId, UserSecret},
+	services::SqliteDatabase,
 };
 
 #[derive(Serialize)]
@@ -19,11 +19,6 @@ pub struct UserUpdateRequest {
 	user_id: UserId,
 	user_secret: UserSecret,
 	user_data: UserData,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct UserData {
-	name: String,
 }
 
 #[post("/user")]

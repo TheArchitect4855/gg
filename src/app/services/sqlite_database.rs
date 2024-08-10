@@ -2,9 +2,7 @@ use std::path::Path;
 
 use rusqlite::{params, OptionalExtension};
 
-use crate::app::data::{UserId, UserSecret};
-
-use super::user::UserData;
+use crate::app::data::{UserData, UserId, UserSecret};
 
 pub struct SqliteDatabase {
 	connection: rusqlite::Connection,
