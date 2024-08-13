@@ -2,7 +2,7 @@ use std::path::Path;
 
 use rusqlite::{params, OptionalExtension};
 
-use crate::app::data::{UserData, UserId, UserSecret};
+use crate::app::data::{GameMap, UserData, UserId, UserSecret};
 
 pub struct SqliteDatabase {
 	connection: rusqlite::Connection,
@@ -30,6 +30,26 @@ impl SqliteDatabase {
 		)?;
 
 		Ok(())
+	}
+
+	pub fn get_game_map_random(&self) -> GameMap {
+		self.connection
+			.query_row(
+				r#"
+				SELECT name, max_players
+				FROM game_maps
+				ORDER BY random()
+				LIMIT 1
+				"#,
+				(),
+				|row| {
+					Ok(GameMap {
+						name: row.get(0)?,
+						max_players: row.get(1)?,
+					})
+				},
+			)
+			.unwrap()
 	}
 
 	pub fn get_server_address(&self) -> String {

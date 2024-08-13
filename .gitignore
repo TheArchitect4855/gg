@@ -1,4 +1,4 @@
-/install-server.sh
 /start-server.sh
+/upload-server.sh
 /target
 *.sqlite

@@ -42,3 +42,11 @@ VALUES ('Alluring', 'Apple'),
 CREATE TABLE IF NOT EXISTS server_addresses (
 	address TEXT NOT NULL PRIMARY KEY
 );
+
+CREATE TABLE IF NOT EXISTS game_maps (
+	name TEXT NOT NULL UNIQUE,
+	max_players INTEGER NOT NULL
+);
+
+INSERT OR IGNORE INTO game_maps (name, max_players)
+VALUES ('dm_testbed', 4);

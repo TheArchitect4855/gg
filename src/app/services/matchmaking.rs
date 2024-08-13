@@ -9,12 +9,11 @@ use rand::Rng;
 use serde::Serialize;
 use tokio::sync::{oneshot, Mutex, MutexGuard};
 
-use crate::app::data::UserId;
+use crate::app::data::{GameMap, UserId};
 
 use super::SqliteDatabase;
 
 const MATCHMAKING_TIMEOUT_SECONDS: u64 = 10;
-const PLAYERS_PER_MATCH: usize = 6;
 
 static USED_PORTS: OnceLock<Mutex<HashSet<u16>>> = OnceLock::new();
 
@@ -25,6 +24,7 @@ pub struct MatchMaking(Mutex<State>);
 pub struct MatchInfo {
 	pub address: String,
 	pub port: u16,
+	pub map_name: String,
 }
 
 struct QueuedPlayer {
@@ -34,30 +34,12 @@ struct QueuedPlayer {
 
 #[derive(Default)]
 struct State {
+	next_map: Option<GameMap>,
 	queue: VecDeque<QueuedPlayer>,
 	queued_users: HashSet<UserId>,
 }
 
-async fn create_match(db: &SqliteDatabase) -> MatchInfo {
-	let address = db.get_server_address();
-	let used_ports = USED_PORTS
-		.get_or_init(|| Mutex::new(HashSet::new()))
-		.lock()
-		.await;
-	let mut rng = rand::thread_rng();
-	let port = loop {
-		let p: u16 = rng.gen_range(1024..u16::MAX);
-		if !used_ports.contains(&p) {
-			break p;
-		}
-	};
-
-	mem::drop(used_ports);
-	start_server(port);
-	MatchInfo { address, port }
-}
-
-fn start_server(port: u16) {
+fn start_server(port: u16, map_name: String) {
 	use std::process::Command;
 	use std::thread;
 
@@ -69,6 +51,7 @@ fn start_server(port: u16) {
 
 		match Command::new("./start-server.sh")
 			.arg(port.to_string())
+			.arg(map_name)
 			.status()
 		{
 			Ok(v) => log::info!("server exited with {v}"),
@@ -88,11 +71,16 @@ impl MatchMaking {
 		db: &SqliteDatabase,
 	) -> MatchInfo {
 		let mut state = self.state().await;
+		if state.next_map.is_none() {
+			state.next_map = Some(db.get_game_map_random());
+		}
+
+		let player_count = state.get_current_player_count();
 		let receiver = if state.is_player_in_queue(&user_id) {
 			state.update_receiver(&user_id)
-		} else if state.queue.len() >= PLAYERS_PER_MATCH - 1 {
-			let match_info = create_match(db).await;
-			for _ in 0..PLAYERS_PER_MATCH - 1 {
+		} else if state.queue.len() >= player_count - 1 {
+			let match_info = state.create_match(db).await;
+			for _ in 0..player_count - 1 {
 				let player = state.dequeue_player().unwrap();
 				let _ = player.sender.send(match_info.clone());
 			}
@@ -120,8 +108,8 @@ impl MatchMaking {
 
 		// If we get timed out, create a match with all players currently in the queue
 		let mut state = self.state().await;
-		let match_info = create_match(db).await;
-		assert!(state.queue.len() <= PLAYERS_PER_MATCH);
+		let match_info = state.create_match(db).await;
+		assert!(state.queue.len() <= player_count);
 
 		while let Some(player) = state.dequeue_player() {
 			// Ignore any potential send errors here, because
@@ -140,6 +128,32 @@ impl MatchMaking {
 }
 
 impl State {
+	async fn create_match(&mut self, db: &SqliteDatabase) -> MatchInfo {
+		let address = db.get_server_address();
+		let used_ports = USED_PORTS
+			.get_or_init(|| Mutex::new(HashSet::new()))
+			.lock()
+			.await;
+		let mut rng = rand::thread_rng();
+		let port = loop {
+			let p: u16 = rng.gen_range(1024..u16::MAX);
+			if !used_ports.contains(&p) {
+				break p;
+			}
+		};
+
+		mem::drop(used_ports);
+		let map_name = self.next_map.as_ref().unwrap().name.clone();
+		self.next_map = Some(db.get_game_map_random());
+
+		start_server(port, map_name.clone());
+		MatchInfo {
+			address,
+			port,
+			map_name,
+		}
+	}
+
 	fn enqueue_player(&mut self, player: QueuedPlayer) {
 		self.queued_users.insert(player.id.clone());
 		self.queue.push_back(player);
@@ -149,6 +163,10 @@ impl State {
 		let player = self.queue.pop_front()?;
 		self.queued_users.remove(&player.id);
 		Some(player)
+	}
+
+	fn get_current_player_count(&self) -> usize {
+		self.next_map.as_ref().unwrap().max_players
 	}
 
 	fn is_player_in_queue(&self, id: &UserId) -> bool {
