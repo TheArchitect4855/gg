@@ -2,7 +2,9 @@ use std::path::Path;
 
 use rusqlite::{params, OptionalExtension};
 
-use crate::app::data::{GameMap, UserData, UserId, UserSecret};
+use crate::app::data::{
+	GameMap, LeaderboardRanking, UserData, UserId, UserSecret,
+};
 
 pub struct SqliteDatabase {
 	connection: rusqlite::Connection,
@@ -58,6 +60,77 @@ impl SqliteDatabase {
 				},
 			)
 			.unwrap()
+	}
+
+	pub fn get_leaderboard_rankings(
+		&self,
+		top_n: usize,
+		include_user: Option<UserId>,
+	) -> Vec<LeaderboardRanking> {
+		let mut stmt = self
+			.connection
+			.prepare(
+				r#"
+			SELECT u.id, json_extract(u.data, '$.name'), l.score
+			FROM leaderboard l
+			INNER JOIN users u
+				ON l.user_id = u.id
+			ORDER BY score DESC
+			LIMIT ?
+			"#,
+			)
+			.unwrap();
+
+		let mut rankings: Vec<LeaderboardRanking> = stmt
+			.query_map([&top_n], |row| {
+				Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+			})
+			.unwrap()
+			.map(|e| e.unwrap())
+			.enumerate()
+			.map(|(i, e)| LeaderboardRanking {
+				rank: i + 1,
+				user_id: e.0,
+				user_name: e.1,
+				score: e.2,
+			})
+			.collect();
+
+		if let Some(user_id) = include_user {
+			let (user_name, score): (String, Option<u32>) = self
+				.connection
+				.query_row(
+					r#"
+				SELECT json_extract(u.data, '$.name'), l.score
+				FROM users u
+				LEFT JOIN leaderboard l
+					ON l.user_id = u.id
+				WHERE u.id = ?
+				"#,
+					[&user_id],
+					|row| Ok((row.get(0)?, row.get(1)?)),
+				)
+				.unwrap();
+
+			let score = score.unwrap_or(0);
+			let rank = self
+				.connection
+				.query_row(
+					"SELECT count(*) FROM leaderboard WHERE score > ?",
+					[&score],
+					|row| row.get::<_, usize>(0),
+				)
+				.unwrap() + 1;
+
+			rankings.push(LeaderboardRanking {
+				rank,
+				user_id,
+				user_name,
+				score,
+			})
+		}
+
+		rankings
 	}
 
 	pub fn get_server_address(&self) -> String {
@@ -120,6 +193,24 @@ impl SqliteDatabase {
 		};
 
 		user_secret == &secret
+	}
+
+	pub fn set_leaderboard_score(
+		&self,
+		user_id: UserId,
+		score: u32,
+	) -> Result<(), rusqlite::Error> {
+		self.connection.execute(
+			r#"
+				INSERT INTO leaderboard (user_id, score)
+				VALUES (?, ?)
+				ON CONFLICT DO UPDATE
+				SET score = ?
+				WHERE user_id = ?
+			"#,
+			(&user_id, &score, &score, &user_id),
+		)?;
+		Ok(())
 	}
 
 	pub fn update_user_data(

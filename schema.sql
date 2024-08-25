@@ -57,5 +57,11 @@ CREATE TABLE IF NOT EXISTS config (
 );
 
 INSERT OR IGNORE INTO config (key) VALUES
-	('game_version')
+	('game_version'),
+	('s2s_secret')
 ;
+
+CREATE TABLE IF NOT EXISTS leaderboard (
+	user_id TEXT NOT NULL PRIMARY KEY REFERENCES users (id),
+	score INTEGER NOT NULL
+);
