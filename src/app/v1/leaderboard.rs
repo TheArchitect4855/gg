@@ -27,9 +27,11 @@ pub struct PutLeaderboardRequest {
 pub async fn get(
 	req: web::Query<GetLeaderboardRequest>,
 	db: web::Data<SqliteDatabase>,
-) -> web::Json<GetLeaderboardResponse> {
-	let rankings = db.get_leaderboard_rankings(9, req.user_id.clone());
-	web::Json(GetLeaderboardResponse { rankings })
+) -> Result<web::Json<GetLeaderboardResponse>, actix_web::Error> {
+	let rankings = db
+		.get_leaderboard_rankings(9, req.user_id.clone())
+		.map_err(|e| actix_web::error::ErrorUnprocessableEntity(e))?;
+	Ok(web::Json(GetLeaderboardResponse { rankings }))
 }
 
 #[put("/leaderboard")]

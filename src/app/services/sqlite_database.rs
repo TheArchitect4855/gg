@@ -66,7 +66,7 @@ impl SqliteDatabase {
 		&self,
 		top_n: usize,
 		include_user: Option<UserId>,
-	) -> Vec<LeaderboardRanking> {
+	) -> Result<Vec<LeaderboardRanking>, rusqlite::Error> {
 		let mut stmt = self
 			.connection
 			.prepare(
@@ -97,9 +97,8 @@ impl SqliteDatabase {
 			.collect();
 
 		if let Some(user_id) = include_user {
-			let (user_name, score): (String, Option<u32>) = self
-				.connection
-				.query_row(
+			let (user_name, score): (String, Option<u32>) =
+				self.connection.query_row(
 					r#"
 				SELECT json_extract(u.data, '$.name'), l.score
 				FROM users u
@@ -109,8 +108,7 @@ impl SqliteDatabase {
 				"#,
 					[&user_id],
 					|row| Ok((row.get(0)?, row.get(1)?)),
-				)
-				.unwrap();
+				)?;
 
 			let score = score.unwrap_or(0);
 			let rank = self
@@ -130,7 +128,7 @@ impl SqliteDatabase {
 			})
 		}
 
-		rankings
+		Ok(rankings)
 	}
 
 	pub fn get_server_address(&self) -> String {
