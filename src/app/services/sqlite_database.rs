@@ -14,6 +14,14 @@ impl SqliteDatabase {
 		Ok(Self { connection })
 	}
 
+	pub fn config_get(&self, key: &str) -> Option<String> {
+		self.connection
+			.query_row("SELECT value FROM config WHERE key = ?", [key], |row| {
+				row.get(0)
+			})
+			.unwrap()
+	}
+
 	pub fn create_user(
 		&self,
 		user_id: &UserId,

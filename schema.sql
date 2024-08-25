@@ -14,7 +14,7 @@ INSERT OR IGNORE INTO user_name_generator (adjective, noun)
 VALUES ('Alluring', 'Apple'),
 	('Bright', 'Banjo'),
 	('Crusty', 'Comrade'),
-	('Dirty', 'Daddy'),
+	('Dirty', 'Dragon'),
 	('Esoteric', 'Emu'),
 	('Free', 'Fellow'),
 	('Ghastly', 'Gunner'),
@@ -23,7 +23,7 @@ VALUES ('Alluring', 'Apple'),
 	('Jolly', 'Jakalope'),
 	('Knowledgable', 'Knut'),
 	('Little', 'Lime'),
-	('Mystic', 'Mommy'),
+	('Mystic', 'Melon'),
 	('Notorious', 'Nob'),
 	('Octarine', 'Octopus'),
 	('Prickly', 'Pear'),
@@ -50,3 +50,12 @@ CREATE TABLE IF NOT EXISTS game_maps (
 
 INSERT OR IGNORE INTO game_maps (name, max_players)
 VALUES ('dm_testbed', 4);
+
+CREATE TABLE IF NOT EXISTS config (
+	key TEXT NOT NULL PRIMARY KEY,
+	value TEXT
+);
+
+INSERT OR IGNORE INTO config (key) VALUES
+	('game_version')
+;
