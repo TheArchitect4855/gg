@@ -112,6 +112,10 @@ impl SqliteDatabase {
 			.collect();
 
 		if let Some(user_id) = include_user {
+			if rankings.iter().any(|e| e.user_id == user_id) {
+				return Ok(rankings);
+			}
+
 			let (user_name, score): (String, Option<u32>) =
 				self.connection.query_row(
 					r#"
@@ -135,6 +139,7 @@ impl SqliteDatabase {
 				)
 				.unwrap() + 1;
 
+			rankings.pop(); // Remove the last item to maintain total count
 			rankings.push(LeaderboardRanking {
 				rank,
 				user_id,
