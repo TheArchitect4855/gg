@@ -46,7 +46,7 @@ pub async fn put(
 		);
 	}
 
-	if let Err(e) = db.set_leaderboard_score(req.user_id.clone(), req.score) {
+	if let Err(e) = db.add_leaderboard_score(req.user_id.clone(), req.score) {
 		return actix_web::HttpResponse::from_error(
 			actix_web::error::ErrorUnprocessableEntity(e),
 		);

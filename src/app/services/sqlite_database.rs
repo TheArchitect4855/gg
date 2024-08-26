@@ -16,6 +16,21 @@ impl SqliteDatabase {
 		Ok(Self { connection })
 	}
 
+	pub fn add_leaderboard_score(
+		&self,
+		user_id: UserId,
+		score: u32,
+	) -> Result<(), rusqlite::Error> {
+		self.connection.execute(
+			r#"
+			INSERT INTO user_scores (user_id, score)
+			VALUES (?, ?)
+			"#,
+			(&user_id, &score),
+		)?;
+		Ok(())
+	}
+
 	pub fn config_get(&self, key: &str) -> Option<String> {
 		self.connection
 			.query_row("SELECT value FROM config WHERE key = ?", [key], |row| {
@@ -191,24 +206,6 @@ impl SqliteDatabase {
 		};
 
 		user_secret == &secret
-	}
-
-	pub fn set_leaderboard_score(
-		&self,
-		user_id: UserId,
-		score: u32,
-	) -> Result<(), rusqlite::Error> {
-		self.connection.execute(
-			r#"
-				INSERT INTO leaderboard (user_id, score)
-				VALUES (?, ?)
-				ON CONFLICT DO UPDATE
-				SET score = ?
-				WHERE user_id = ?
-			"#,
-			(&user_id, &score, &score, &user_id),
-		)?;
-		Ok(())
 	}
 
 	pub fn update_user_data(

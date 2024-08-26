@@ -61,7 +61,13 @@ INSERT OR IGNORE INTO config (key) VALUES
 	('s2s_secret')
 ;
 
-CREATE TABLE IF NOT EXISTS leaderboard (
-	user_id TEXT NOT NULL PRIMARY KEY REFERENCES users (id),
-	score INTEGER NOT NULL
+CREATE TABLE IF NOT EXISTS user_scores (
+	user_id TEXT NOT NULL REFERENCES users (id),
+	score INTEGER NOT NULL,
+	created_at TEXT NOT NULL DEFAULT (datetime())
 );
+
+CREATE VIEW IF NOT EXISTS leaderboard AS
+SELECT user_id, sum(score) AS score
+FROM user_scores
+GROUP BY user_id;
