@@ -39,7 +39,7 @@ struct State {
 	queued_users: HashSet<UserId>,
 }
 
-fn start_server(port: u16, map_name: String) {
+fn start_server(port: u16, map_name: String, s2s_secret: String) {
 	use std::process::Command;
 	use std::thread;
 
@@ -52,6 +52,7 @@ fn start_server(port: u16, map_name: String) {
 		match Command::new("./start-server.sh")
 			.arg(port.to_string())
 			.arg(map_name)
+			.env("GG_SECRET", s2s_secret)
 			.status()
 		{
 			Ok(v) => log::info!("server exited with {v}"),
@@ -146,7 +147,11 @@ impl State {
 		let map_name = self.next_map.as_ref().unwrap().name.clone();
 		self.next_map = Some(db.get_game_map_random());
 
-		start_server(port, map_name.clone());
+		start_server(
+			port,
+			map_name.clone(),
+			db.config_get("s2s_secret").expect("missing s2s_secret"),
+		);
 		MatchInfo {
 			address,
 			port,
